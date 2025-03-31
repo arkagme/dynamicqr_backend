@@ -8,5 +8,6 @@ router.post('/generate', qrController.generateQR);
 router.get('/analytics/:id', qrController.getAnalytics);
 router.get('/history', qrController.getHistory);
 router.post('/saveImage', qrController.saveImage);
+router.delete('/:id', qrController.deleteQR);
   
 module.exports = router;
