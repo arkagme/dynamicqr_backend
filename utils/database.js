@@ -9,7 +9,7 @@ const pool = new Pool({
   password: config.database.password
 });
 
-// Test database connection
+//Testing database connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.log('Database connection error:', err.stack);

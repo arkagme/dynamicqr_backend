@@ -1,3 +1,4 @@
+//redundant file , not used , kept for reference
 const express = require('express');
 const cors = require('cors');
 const db = require('./utils/database');
@@ -7,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Simple redirect handler 
+ 
 const handler = async (req, res) => {
   // Get tracking ID from the URL path
   const trackingId = req.url.split('/r/')[1];
@@ -18,7 +19,7 @@ const handler = async (req, res) => {
 
   try {
 
-    //get target url from psql db
+
         const query = `
           SELECT target_url FROM qr_codes WHERE id = $1
         `;
@@ -46,7 +47,7 @@ const handler = async (req, res) => {
       ]);
     
     
-    // Redirect to the target URL
+
     return res.redirect(target_url);
   } catch (error) {
     console.error('Redirect error:', error);
@@ -54,7 +55,7 @@ const handler = async (req, res) => {
   }
 };
 
-// Mount the handler
+// Mount 
 app.get('/r/:id', handler);
 
 module.exports = app;

@@ -7,14 +7,14 @@ const routes = require('./routes');
 const logger = require('./utils/logger');
 const db = require('./utils/database');
 
-// Import routes
+
 
 const qrRoutes = require('./routes/index');
 
 
 const app = express();
 
-// Middleware
+
 app.use(cors());
 app.use(express.json());
 
@@ -23,7 +23,7 @@ app.use((req, res, next) => {
     logger.info(`${req.method} ${req.originalUrl}`);
     next();
   });
-// API Routes
+
 app.use('/api', qrRoutes);
 
 app.use('/api/assets', express.static(path.join(__dirname, 'assets')));
@@ -45,7 +45,7 @@ app.get('/r/:id', async (req, res) => {
   
     try {
   
-      //get target url from psql db
+      //target url from psql db
           const query = `
             SELECT target_url FROM qr_codes WHERE id = $1
           `;
@@ -73,7 +73,7 @@ app.get('/r/:id', async (req, res) => {
         ]);
       
       
-      // Redirect to the target URL
+     
       return res.redirect(target_url);
     } catch (error) {
       console.error('Redirect error:', error);
@@ -93,5 +93,5 @@ app.get('/r/:id', async (req, res) => {
 
 app.use(errorHandler);
 
-// Export the app for serverless use
+
 module.exports = app;

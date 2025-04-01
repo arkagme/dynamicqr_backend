@@ -146,13 +146,13 @@ exports.deleteQR = async (req, res, next) => {
       return res.status(404).json({ error: 'QR code not found' });
     }
 
-    // Delete analytics records first to avoid foreign key constraints
+
     await db.query(`DELETE FROM analytics WHERE qr_code_id = $1`, [id]);
 
-    // Delete QR code record
+
     await db.query(`DELETE FROM qr_codes WHERE id = $1`, [id]);
 
-    // Delete QR code image (if exists)
+
     const imagePath = path.join(process.cwd(), 'assets', `${id}.png`);
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);

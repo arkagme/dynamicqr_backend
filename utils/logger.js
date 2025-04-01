@@ -14,7 +14,7 @@ const logger = winston.createLogger({
   defaultMeta: { service: 'dynamicqr-backend' },
 });
 
-// If we're not in production, log to the console as well
+
 if (config.env !== 'production') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
