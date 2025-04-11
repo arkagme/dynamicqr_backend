@@ -70,10 +70,50 @@ exports.getAnalytics = async (req, res , next) => {
     const dailyScansQuery = `SELECT * FROM get_daily_scans($1)`;
     const { rows: dailyScans } = await db.query(dailyScansQuery, [id]);
     
+    // Helper function to convert dates to IST format strings
+    const formatToIST = (dateInput) => {
+      if (!dateInput) return null;
+      
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) return null;
+      
+      // Format to IST (UTC+5:30)
+      return date.toLocaleString('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    };
+    
+    // Format dates in IST format
+    const formattedQrInfo = {
+      ...qrInfo[0],
+      created_at: formatToIST(qrInfo[0].created_at)
+    };
+    
+    const formattedAnalyticsData = {
+      ...analyticsData[0],
+      get_qr_analytics: {
+        ...analyticsData[0].get_qr_analytics,
+        last_scan: formatToIST(analyticsData[0].get_qr_analytics.last_scan)
+      }
+    };
+    
+    const formattedDailyScans = dailyScans.map(day => ({
+      ...day,
+      date: formatToIST(day.date).split(',')[0], // Only keep the date part for daily scans
+      scans: parseInt(day.scans) // Convert string to number
+    }));
+    
     res.json({
-      qr: qrInfo[0],
-      stats: analyticsData[0],
-      dailyScans: dailyScans
+      qr: formattedQrInfo,
+      stats: formattedAnalyticsData,
+      dailyScans: formattedDailyScans
     });
 
     logger.info('QR code analytics fetched successfully');
