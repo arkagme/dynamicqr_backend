@@ -6,6 +6,13 @@ const { errorHandler } = require('./middleware');
 const routes = require('./routes');
 const logger = require('./utils/logger');
 const db = require('./utils/database');
+var session = require('express-session');
+var pgSession = require('connect-pg-simple')(session);
+const { Pool } = require('pg');
+const config = require('./config');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oidc');
+const setupPassport = require('./middleware/auth');
 
 
 
@@ -23,6 +30,25 @@ app.use((req, res, next) => {
     logger.info(`${req.method} ${req.originalUrl}`);
     next();
   });
+
+
+const pool = new Pool({
+  host: config.database.host,
+  port: config.database.port,
+  database: config.database.name,
+  user: config.database.user,
+  password: config.database.password
+});
+app.use(session({
+  store: new pgSession({
+    pool: pool,           // Connection pool
+    tableName: 'sessions'  // Use a custom table name (default is "session")
+  }),
+  secret: process.env.SESSION_SECRET || 'keyboard cat', // Use environment variable in production
+  resave: false,
+  saveUninitialized: false,
+}));
+setupPassport(app);
 
 app.use('/api', qrRoutes);
 

@@ -3,6 +3,9 @@ const db = require('../utils/database');
 const logger = require('../utils/logger');
 const fs = require('fs');
 const path = require('path');
+var passport = require('passport');
+var GoogleStrategy = require('passport-google-oidc');
+require('dotenv').config();
 
 exports.generateQR = async (req, res, next) => {
   try {
@@ -205,4 +208,17 @@ exports.deleteQR = async (req, res, next) => {
     next(error);
     res.status(500).json({ error: 'Failed to delete QR code' });
   }
+};
+
+exports.authenticateRedirect = (req, res, next) => {
+  passport.authenticate('google', { 
+    scope: ['profile'] 
+  })(req, res, next);
+};
+
+exports.authenticateActual = (req, res, next) => {
+  passport.authenticate('google', {
+    successRedirect: '/',
+    failureRedirect: '/login'
+  })(req, res, next);
 };
