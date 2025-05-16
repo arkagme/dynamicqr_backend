@@ -139,6 +139,18 @@ exports.getHistory = async (req, res ,next) =>{
   }
 }
 
+exports.getAllHistory = async (req, res ,next) =>{
+  try {
+    const query = `SELECT * FROM qr_codes ORDER BY created_at DESC`;
+    const { rows : data } = await db.query(query);
+    res.json(data);
+    logger.info('QR code of all users history fetched successfully');
+  } catch (error) {
+    next(error);
+    res.status(500).json({ error: 'Failed to fetch QR history' });
+  }
+}
+
 exports.saveImage = async (req, res , next) => {
        try {
           const { imageData, fileName } = req.body;

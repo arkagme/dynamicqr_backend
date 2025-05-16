@@ -28,7 +28,7 @@ exports.setupPassport = function setupPassport(app){
 
     passport.serializeUser(function(user, cb) {
     process.nextTick(function() {
-        cb(null, { id: user.id, username: user.username, name: user.name });
+        cb(null, { id: user.id, username: user.username, name: user.name , role: user.role });
         });
     });
 
@@ -89,6 +89,9 @@ exports.setupPassport = function setupPassport(app){
 
 exports.ownsQR = async (req, res, next) => {
   try {
+    if (req.user.role === 'admin') {
+      return next();
+    }
     const { rows } = await db.query(
       'SELECT user_id FROM qr_codes WHERE id = $1',
       [req.params.id]
@@ -103,4 +106,10 @@ exports.ownsQR = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.isAdmin = async (req,res,next) => {
+    req.user.role === 'admin'
+    ? next()
+    : res.status(403).json({ error: 'Admin access required' });
+}
 
