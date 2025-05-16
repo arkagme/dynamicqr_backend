@@ -24,15 +24,16 @@ exports.generateQR = async (req, res, next) => {
     
     // Store in PostgreSQL using pg
     const query = `
-      INSERT INTO qr_codes (id, target_url, with_logo, created_at)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO qr_codes (id, target_url, with_logo, created_at, user_id)
+      VALUES ($1, $2, $3, $4, $5)
     `;
     
     await db.query(query, [
       trackingId, 
       url, 
       withLogo,
-      new Date()
+      new Date(),
+      req.user.id
     ]);
     
     // Create tracking URL
@@ -128,8 +129,8 @@ exports.getAnalytics = async (req, res , next) => {
 
 exports.getHistory = async (req, res ,next) =>{
   try {
-    const query = `SELECT * FROM qr_codes ORDER BY created_at DESC`;
-    const { rows : data } = await db.query(query);
+    const query = `SELECT * FROM qr_codes WHERE user_id = $1 ORDER BY created_at DESC`;
+    const { rows : data } = await db.query(query,[req.user.id]);
     res.json(data);
     logger.info('QR code history fetched successfully');
   } catch (error) {

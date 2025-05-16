@@ -12,7 +12,7 @@ const { Pool } = require('pg');
 const config = require('./config');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oidc');
-const setupPassport = require('./middleware/auth');
+const { setupPassport } = require('./middleware/auth');
 
 
 
@@ -24,6 +24,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
 app.use((req, res, next) => {

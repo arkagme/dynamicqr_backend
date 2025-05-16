@@ -4,8 +4,24 @@ const db = require('../utils/database');
 require('dotenv').config();
 
 
+// Authentication middleware
+exports.ensureAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: 'Unauthorized - Please log in first' });
+};
 
-module.exports = function setupPassport(app){
+// Conditional QR auth middleware
+exports.checkDynamicAuth = (req, res, next) => {
+  if (req.body.isDynamic) {
+    return exports.ensureAuthenticated(req, res, next);
+  }
+  next();
+};
+
+
+exports.setupPassport = function setupPassport(app){
 
     app.use(passport.initialize());
     app.use(passport.session());
@@ -70,3 +86,21 @@ module.exports = function setupPassport(app){
 }));
 
 }
+
+exports.ownsQR = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT user_id FROM qr_codes WHERE id = $1',
+      [req.params.id]
+    );
+    
+    if (!rows.length || rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
