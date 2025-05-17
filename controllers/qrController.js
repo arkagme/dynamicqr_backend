@@ -19,10 +19,10 @@ exports.generateQR = async (req, res, next) => {
       });
     }
     
-    // Generate unique tracking ID
+  
     const trackingId = crypto.randomBytes(8).toString('hex');
     
-    // Store in PostgreSQL using pg
+
     const query = `
       INSERT INTO qr_codes (id, target_url, with_logo, created_at, user_id)
       VALUES ($1, $2, $3, $4, $5)
@@ -36,7 +36,7 @@ exports.generateQR = async (req, res, next) => {
       req.user.id
     ]);
     
-    // Create tracking URL
+
     const baseUrl = process.env.BASE_URL ||`${req.protocol}://${req.get('host')}`;
     const trackingUrl = `${baseUrl}/r/${trackingId}`;
     
@@ -57,7 +57,7 @@ exports.getAnalytics = async (req, res , next) => {
   try {
     const { id } = req.params;
     
-    //qr code info from psql
+
     const query = `SELECT id , target_url , with_logo , created_at FROM qr_codes WHERE id=$1`
     const {rows: qrInfo} = await db.query(query,[id]);
 
@@ -66,22 +66,20 @@ exports.getAnalytics = async (req, res , next) => {
     }
     
 
-    //analytics data from psql
+
     const analyticsQuery = `SELECT * FROM get_qr_analytics($1)`
     const {rows: analyticsData} = await db.query(analyticsQuery,[id]);
      
-    // daily scan from psql
+
     const dailyScansQuery = `SELECT * FROM get_daily_scans($1)`;
     const { rows: dailyScans } = await db.query(dailyScansQuery, [id]);
     
-    // Helper function to convert dates to IST format strings
     const formatToIST = (dateInput) => {
       if (!dateInput) return null;
       
       const date = new Date(dateInput);
       if (isNaN(date.getTime())) return null;
       
-      // Format to IST (UTC+5:30)
       return date.toLocaleString('en-US', {
         timeZone: 'Asia/Kolkata',
         year: 'numeric',
@@ -94,7 +92,6 @@ exports.getAnalytics = async (req, res , next) => {
       });
     };
     
-    // Format dates in IST format
     const formattedQrInfo = {
       ...qrInfo[0],
       created_at: formatToIST(qrInfo[0].created_at)
@@ -110,8 +107,8 @@ exports.getAnalytics = async (req, res , next) => {
     
     const formattedDailyScans = dailyScans.map(day => ({
       ...day,
-      date: formatToIST(day.date).split(',')[0], // Only keep the date part for daily scans
-      scans: parseInt(day.scans) // Convert string to number
+      date: formatToIST(day.date).split(',')[0], 
+      scans: parseInt(day.scans) 
     }));
     
     res.json({
@@ -159,19 +156,15 @@ exports.saveImage = async (req, res , next) => {
             return res.status(400).json({ error: 'Missing required parameters' });
           }
       
-          // Define the assets directory path
           const assetsDir = path.join(process.cwd(), 'assets');
           
-          // Create directory if it doesn't exist
           if (!fs.existsSync(assetsDir)) {
             fs.mkdirSync(assetsDir, { recursive: true });
           }
-          
-          // Write the image file
+
           const filePath = path.join(assetsDir, fileName);
           fs.writeFileSync(filePath, Buffer.from(imageData, 'base64'));
           
-          // Return the relative path to the client
           const relativePath = `/assets/${fileName}`;
           
           res.status(200).json({ 
@@ -194,7 +187,6 @@ exports.deleteQR = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Check if the QR code exists
     const qrCheckQuery = `SELECT id FROM qr_codes WHERE id=$1`;
     const { rows: qrCheck } = await db.query(qrCheckQuery, [id]);
 
