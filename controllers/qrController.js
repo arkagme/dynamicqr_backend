@@ -223,7 +223,11 @@ exports.authenticateRedirect = (req, res, next) => {
 
 exports.authenticateActual = (req, res, next) => {
   passport.authenticate('google', {
-    successRedirect: '/',
+    successRedirect: 'http://localhost:5173/',
     failureRedirect: '/login'
   })(req, res, next);
 };
+
+exports.getMe = (req,res,next) => {
+    res.status(200).json({ user: req.user });
+}

@@ -12,10 +12,12 @@ router.delete('/:id', auth.ensureAuthenticated , auth.ownsQR , qrController.dele
 router.get('/admin/getallhistory',auth.ensureAuthenticated , auth.isAdmin , qrController.getAllHistory)
 router.get('/login/federated/google',qrController.authenticateRedirect);
 router.get('/oauth2/redirect/google',qrController.authenticateActual);
+router.get('/me', auth.ensureAuthenticated, qrController.getMe);
+
 router.post('/logout', function(req, res, next) {
   req.logout(function(err) {
     if (err) { return next(err); }
-    res.redirect('/');
+    res.json({ success: true, message: 'Logged out successfully' });
   });
 });
   
