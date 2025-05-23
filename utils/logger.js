@@ -12,15 +12,13 @@ const logger = winston.createLogger({
     winston.format.json()
   ),
   defaultMeta: { service: 'dynamicqr-backend' },
+    transports: [
+    // Always add console transport
+    new winston.transports.Console({
+      format: config.env !== 'production' 
+        ? winston.format.combine(winston.format.colorize(), winston.format.simple())
+        : winston.format.json()
+    })
+  ]
 });
-
-
-if (config.env !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
-}
 module.exports = logger;
