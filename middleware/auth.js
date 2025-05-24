@@ -1,5 +1,5 @@
 const passport = require('passport');
-const GoogleStrategy = require('passport-google-oidc');
+const GoogleStrategy = require('passport-google-oauth20');
 const db = require('../utils/database');
 require('dotenv').config();
 const logger = require('../utils/logger');
@@ -49,11 +49,11 @@ exports.setupPassport = function setupPassport(app){
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: callbackURL ,
     scope: ['profile','email']
-  }, async function verify(issuer, profile, cb) {
+  }, async function verify(accessToken, refreshToken, profile, cb) {
     try {
       const result = await db.query(
         'SELECT * FROM federated_credentials WHERE provider = $1 AND subject = $2',
-        [issuer, profile.id]
+        ['google', profile.id]
       );
       
       if (result.rows.length === 0) {
@@ -65,7 +65,7 @@ exports.setupPassport = function setupPassport(app){
         const userId = userResult.rows[0].id;
         await db.query(
           'INSERT INTO federated_credentials (user_id, provider, subject) VALUES ($1, $2, $3)',
-          [userId, issuer, profile.id]
+          [userId, 'google', profile.id]
         );
 
         logger.info("Google Profile:", JSON.stringify(profile, null, 2))
