@@ -217,7 +217,7 @@ exports.deleteQR = async (req, res, next) => {
 
 exports.authenticateRedirect = (req, res, next) => {
   passport.authenticate('google', { 
-    scope: ['profile'] 
+    scope: ['profile','email'] 
   })(req, res, next);
 };
 
