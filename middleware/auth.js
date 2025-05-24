@@ -58,7 +58,7 @@ exports.setupPassport = function setupPassport(app){
       if (result.rows.length === 0) {
         const userResult = await db.query(
           'INSERT INTO users (name,email) VALUES ($1, $2) RETURNING id',
-          [profile.displayName , profile.emails[0].value]
+          [profile.displayName , profile.emails && profile.emails[0] ? profile.emails[0].value : null]
         );
         
         const userId = userResult.rows[0].id;
