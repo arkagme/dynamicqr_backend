@@ -2,6 +2,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oidc');
 const db = require('../utils/database');
 require('dotenv').config();
+const logger = require('../utils/logger');
 
 
 // Authentication middleware
@@ -66,8 +67,8 @@ exports.setupPassport = function setupPassport(app){
           'INSERT INTO federated_credentials (user_id, provider, subject) VALUES ($1, $2, $3)',
           [userId, issuer, profile.id]
         );
-        
-        console.log("Google Profile:", JSON.stringify(profile, null, 2))
+
+        logger.info("Google Profile:", JSON.stringify(profile, null, 2))
         return cb(null, { id: userId, name: profile.displayName , email: profile.emails[0].value });
       } else {
         // existing user
