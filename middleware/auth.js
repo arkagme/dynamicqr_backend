@@ -68,7 +68,6 @@ exports.setupPassport = function setupPassport(app){
           [userId, 'google', profile.id]
         );
 
-        logger.info("Google Profile:", JSON.stringify(profile, null, 2))
         return cb(null, { id: userId, name: profile.displayName , email: profile.emails[0].value });
       } else {
         // existing user
