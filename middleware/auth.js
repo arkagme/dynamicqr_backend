@@ -22,6 +22,7 @@ exports.checkDynamicAuth = (req, res, next) => {
 
 
 exports.setupPassport = function setupPassport(app){
+    app.set('trust proxy',1);
 
     app.use(passport.initialize());
     app.use(passport.session());
@@ -38,10 +39,14 @@ exports.setupPassport = function setupPassport(app){
         });
     });
 
+    const callbackURL = process.env.NODE_ENV === 'production'? 
+    process.env.REDIRECT_URI || 'https://qrapi.arkagme.biz/api/qr/oauth2/redirect/google'
+    : 'http://localhost:3000/api/qr/oauth2/redirect/google';
+
     passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/api/qr/oauth2/redirect/google', // Make sure this matches your route
+    callbackURL: callbackURL ,
     scope: ['profile']
   }, async function verify(issuer, profile, cb) {
     try {
