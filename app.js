@@ -56,13 +56,7 @@ setupPassport(app);
 
 app.use('/api', qrRoutes);
 
-const assetsRouter = express.Router();
-assetsRouter.use(cors({
-  origin: ['https://qr.arkagme.biz', 'http://localhost:5173'],
-  credentials: true
-}));
-assetsRouter.use(express.static(path.join(__dirname, 'assets')));
-app.use('/api/assets', assetsRouter);
+app.use('/api/assets', express.static(path.join(__dirname, 'assets')));
 
 app.get('/', (req, res) => {
     res.json({
