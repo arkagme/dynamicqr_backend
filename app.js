@@ -56,19 +56,7 @@ setupPassport(app);
 
 app.use('/api', qrRoutes);
 
-// Static assets with explicit CORS headers
-app.use('/api/assets', (req, res, next) => {
-    // Set CORS headers for static assets
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-}, express.static(path.join(__dirname, 'assets')));
+app.use('/api/assets', express.static(path.join(__dirname, 'assets')));
 
 app.get('/', (req, res) => {
     res.json({
