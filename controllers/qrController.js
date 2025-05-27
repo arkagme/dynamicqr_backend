@@ -6,6 +6,7 @@ const path = require('path');
 var passport = require('passport');
 var GoogleStrategy = require('passport-google-oidc');
 require('dotenv').config();
+const axios = require('axios')
 
 exports.generateQR = async (req, res, next) => {
   try {
