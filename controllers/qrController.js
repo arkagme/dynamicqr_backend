@@ -231,3 +231,77 @@ exports.authenticateActual = (req, res, next) => {
 exports.getMe = (req,res,next) => {
     res.status(200).json({ user: req.user });
 }
+
+exports.getUserLogos = async (req, res, next) => {
+  try {
+    const infoUrl = process.env.ME_URI
+    const userResponse = await axios.get(infoUrl, {
+      headers: {
+        cookie: req.headers.cookie
+      }
+    });
+    
+    const user = userResponse.data.user;
+    
+    const query = `
+      SELECT share_id,direct_url
+      FROM user_logos 
+      WHERE user_id = $1 
+      ORDER BY uploaded_at DESC
+    `;
+    
+    const { rows } = await db.query(query, [user.id]);
+    
+    const formattedLogos = rows.map((logo, index) => ({
+      url: logo.direct_url,
+      share_id : logo.share_id
+    }));
+    
+    res.json({
+      success: true,
+      logos: formattedLogos
+    });
+
+    logger.info(`User logos fetched successfully for user ${user.id}`);
+  } catch (error) {
+    next(error);
+    res.status(500).json({ error: 'Failed to fetch user logos' });
+  }
+};
+
+exports.deleteUserLogo = async (req, res, next) => {
+  try {
+    const { logoId } = req.params;
+    const infoUrl = process.env.ME_URI
+    const userResponse = await axios.get(infoUrl, {
+      headers: {
+        cookie: req.headers.cookie
+      }
+    });
+    
+    const user = userResponse.data.user;
+    const checkQuery = `
+      SELECT * FROM user_logos 
+      WHERE share_id = $1 AND user_id = $2
+    `;
+    
+    const { rows } = await db.query(checkQuery, [logoId, user.id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Logo not found or unauthorized' });
+    }
+
+    const deleteQuery = `DELETE FROM user_logos WHERE share_id = $1`;
+    await db.query(deleteQuery, [logoId]);
+    
+    res.json({
+      success: true,
+      message: 'Logo deleted successfully'
+    });
+
+    logger.info(`Logo ${logoId} deleted successfully for user ${user.id}`);
+  } catch (error) {
+    next(error);
+    res.status(500).json({ error: 'Failed to delete logo' });
+  }
+};

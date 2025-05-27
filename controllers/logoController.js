@@ -1,5 +1,6 @@
 require('dotenv').config();
 const multer = require('multer');
+const axios = require('axios')
 const upload = multer();
 
 const baseURL = process.env.PINGVIN_URI;
@@ -176,7 +177,7 @@ module.exports.logoauthController = async (req, res, next) => {
     const authResult = await authenticate();
     console.log('Authentication Result:', authResult);
     if (!authResult) {
-      return res.status(401).json({ success: false }); // Only send on failure
+      return res.status(401).json({ success: false });
     }
     next();
   } catch (error) {
@@ -198,11 +199,37 @@ module.exports.handleLogoUpload = async (req, res) => {
       req.file.originalname
     );
 
+    const infoUrl = process.env.ME_URI
+    const userResponse = await axios.get(infoUrl, {
+      headers: {
+        cookie: req.headers.cookie
+      }
+    });
+
+    const user = userResponse.data.user;
+
+    const query = `
+      INSERT INTO user_logos (user_id, user_email, filename,direct_url, share_id, file_id)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `;
+
+    const { rows } = await db.query(query, [
+      user.id,
+      user.email,
+      req.file.originalname,
+      result.directFileUrl,
+      result.shareId,
+      result.fileId
+    ]);
+
     res.json({
       success: true,
       url: result.directUrl,
-      details: result
+      details: result,
+      logoInfo: rows[0]
     });
+
   } catch (error) {
     console.error('Upload Error:', error);
     res.status(500).json({ success: false, error: error.message });

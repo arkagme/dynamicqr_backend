@@ -15,6 +15,8 @@ router.get('/login/federated/google',qrController.authenticateRedirect);
 router.get('/oauth2/redirect/google',qrController.authenticateActual);
 router.get('/me', auth.ensureAuthenticated, qrController.getMe);
 router.post('/uploadlogo',logo.logoauthController,logo.uploadlogoController,logo.handleLogoUpload);
+router.get('/userlogos', auth.ensureAuthenticated, qrController.getUserLogos);
+router.delete('/userlogos/:logoId', auth.ensureAuthenticated, qrController.deleteUserLogo);
 
 router.post('/logout', function(req, res, next) {
   req.logout(function(err) {
