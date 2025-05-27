@@ -2,6 +2,8 @@ require('dotenv').config();
 const multer = require('multer');
 const axios = require('axios')
 const upload = multer();
+const db = require('../utils/database');
+const logger = require('../utils/logger');
 
 const baseURL = process.env.PINGVIN_URI;
 const systemCredentials = {
