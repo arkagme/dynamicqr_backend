@@ -46,9 +46,9 @@ const pool = new Pool({
 app.use(session({
   store: new pgSession({
     pool: pool,           // Connection pool
-    tableName: 'sessions'  // Use a custom table name (default is "session")
+    tableName: 'sessions'  
   }),
-  secret: process.env.SESSION_SECRET || 'keyboard cat', // Use environment variable in production
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: false,
 }));
@@ -66,7 +66,7 @@ app.get('/', (req, res) => {
   });
 
 app.get('/r/:id', async (req, res) => {
-    // Get tracking ID from the URL path
+    // tracking ID from the URL path
     const trackingId = req.params.id;
     logger.info(trackingId);
     if (!trackingId) {

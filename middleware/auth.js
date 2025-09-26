@@ -41,7 +41,7 @@ exports.setupPassport = function setupPassport(app){
     });
 
     const callbackURL = process.env.NODE_ENV === 'production'? 
-    process.env.REDIRECT_URI || 'https://qrapi.arkagme.biz/api/qr/oauth2/redirect/google'
+    process.env.REDIRECT_URI || 'https://qrapi.arkagme.me/api/qr/oauth2/redirect/google'
     : 'http://localhost:3000/api/qr/oauth2/redirect/google';
 
     passport.use(new GoogleStrategy({

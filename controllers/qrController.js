@@ -224,7 +224,7 @@ exports.authenticateRedirect = (req, res, next) => {
 
 exports.authenticateActual = (req, res, next) => {
   passport.authenticate('google', {
-    successRedirect: 'https://qr.arkagme.biz/',
+    successRedirect: 'https://qr.arkagme.me/',
     failureRedirect: '/login'
   })(req, res, next);
 };
