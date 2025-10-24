@@ -4,6 +4,8 @@ const axios = require('axios')
 const upload = multer();
 const db = require('../utils/database');
 const logger = require('../utils/logger');
+const UserLogo = require('../models/userlogos')
+
 
 const baseURL = process.env.PINGVIN_URI;
 const systemCredentials = {
@@ -201,7 +203,7 @@ module.exports.handleLogoUpload = async (req, res) => {
       req.file.originalname
     );
 
-    const infoUrl = process.env.ME_URI
+    const infoUrl = process.env.ME_URI;
     const userResponse = await axios.get(infoUrl, {
       headers: {
         cookie: req.headers.cookie
@@ -210,26 +212,21 @@ module.exports.handleLogoUpload = async (req, res) => {
 
     const user = userResponse.data.user;
 
-    const query = `
-      INSERT INTO user_logos (user_id, user_email, filename,direct_url, share_id, file_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `;
-
-    const { rows } = await db.query(query, [
-      user.id,
-      user.email,
-      req.file.originalname,
-      result.directFileUrl,
-      result.shareId,
-      result.fileId
-    ]);
+    // Sequelize create instead of raw INSERT query
+    const logoInfo = await UserLogo.create({
+      user_id: user.id,
+      user_email: user.email,
+      filename: req.file.originalname,
+      direct_url: result.directFileUrl,
+      share_id: result.shareId,
+      file_id: result.fileId
+    });
 
     res.json({
       success: true,
       url: result.directUrl,
       details: result,
-      logoInfo: rows[0]
+      logoInfo: logoInfo.toJSON()
     });
 
   } catch (error) {
@@ -237,3 +234,4 @@ module.exports.handleLogoUpload = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+

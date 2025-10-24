@@ -23,7 +23,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-google-oidc": "^0.1.0",
     "pg": "^8.14.0",
-    "sequelize": "^6.37.6",
+    "sequelize": "^6.37.7",
     "winston": "^3.17.0"
   },
   "devDependencies": {

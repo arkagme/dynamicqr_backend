@@ -13,7 +13,8 @@ const config = require('./config');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oidc');
 const { setupPassport } = require('./middleware/auth');
-
+const QRCode = require('./models/qrcode');
+const Analytics = require('./models/analytics')
 
 
 const qrRoutes = require('./routes/index');
@@ -65,51 +66,66 @@ app.get('/', (req, res) => {
     });
   });
 
+app.set('trust proxy', true);
+
+
+function getClientIp(req) {
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (xForwardedFor) {
+    const ips = xForwardedFor.split(',').map(ip => ip.trim());
+    return ips[0];
+  }
+  if (req.connection && req.connection.remoteAddress) {
+    return req.connection.remoteAddress;
+  }
+  if (req.socket && req.socket.remoteAddress) {
+    return req.socket.remoteAddress;
+  }
+  if (req.connection && req.connection.socket && req.connection.socket.remoteAddress) {
+    return req.connection.socket.remoteAddress;
+  }
+  return req.ip;
+}
+
+
 app.get('/r/:id', async (req, res) => {
-    // tracking ID from the URL path
-    const trackingId = req.params.id;
-    logger.info(trackingId);
-    if (!trackingId) {
-      return res.status(404).send('Invalid tracking ID');
+  // tracking ID from the URL path
+  const trackingId = req.params.id;
+  logger.info(trackingId);
+  if (!trackingId) {
+    return res.status(404).send('Invalid tracking ID');
+  }
+
+  try {
+    // Get target URL from QRCode model
+    const qrCode = await QRCode.findByPk(trackingId, {
+      attributes: ['target_url']
+    });
+
+    if (!qrCode) {
+      return res.status(404).send('QR code not hehe found');
     }
-  
-    try {
-  
-      //target url from psql db
-          const query = `
-            SELECT target_url FROM qr_codes WHERE id = $1
-          `;
-          
-          const {rows: data} = await db.query(query,[trackingId]);
-          logger.info(data)
-          console.log(data)
-          if (!data || data.length === 0) {
-            return res.status(404).send('QR code not hehe found');
-          }
-  
-          const target_url = data[0].target_url;
-          logger.info(`Redirecting ${trackingId} to ${target_url}`);
-  
-          const logQuery = `
-          INSERT INTO analytics (qr_code_id, user_agent, ip_address, timestamp) 
-          VALUES ($1, $2, $3, $4)
-          `;
-    
-        await db.query(logQuery, [
-          trackingId,
-          req.headers['user-agent'],
-          req.ip,
-          new Date()
-        ]);
-      
-      
-     
-      return res.redirect(target_url);
-    } catch (error) {
-      console.error('Redirect error:', error);
-      return res.status(500).send('Server error');
-    }
- });
+
+    const target_url = qrCode.target_url;
+    logger.info(`Redirecting ${trackingId} to ${target_url}`);
+    logger.info(getClientIp(req));
+    logger.info(req.headers['user-agent'])
+    logger.info(trackingId)
+    // Insert analytics record
+    await Analytics.create({
+      qr_code_id: trackingId,
+      user_agent: req.headers['user-agent'],
+      ip_address: req.ip,
+      timestamp: new Date()
+    });
+
+    return res.redirect(target_url);
+  } catch (error) {
+    console.error('Redirect error:', error);
+    return res.status(500).send('Server error');
+  }
+});
+
 
   app.use((req, res) => {
     res.status(404).json({

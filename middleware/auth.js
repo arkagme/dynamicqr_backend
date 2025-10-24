@@ -3,6 +3,9 @@ const GoogleStrategy = require('passport-google-oauth20');
 const db = require('../utils/database');
 require('dotenv').config();
 const logger = require('../utils/logger');
+const FederatedCredential = require('../models/credentials');
+const User = require('../models/users')
+const QRCode = require('../models/qrcode');
 
 
 // Authentication middleware
@@ -54,38 +57,31 @@ exports.setupPassport = function setupPassport(app){
 
       console.log('Google Profile:', JSON.stringify(profile, null, 2));
       console.log('Profile emails:', profile.emails[0].value);
-      const result = await db.query(
-        'SELECT * FROM federated_credentials WHERE provider = $1 AND subject = $2',
-        ['google', profile.id]
-      );
-      
-      if (result.rows.length === 0) {
+      const result = await FederatedCredential.findOne({
+        where: { provider: 'google', subject: profile.id }
+      });
+      if (!result) {
         const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
-        const userResult = await db.query(
-          'INSERT INTO users (name,email) VALUES ($1, $2) RETURNING id',
-          [profile.displayName , email]
-        );
+        const userResult = await User.create({ name: profile.displayName, email })
         
-        const newUser = userResult.rows[0];
+        const newUser = userResult;
         console.log('Created user:', newUser);
-        await db.query(
-          'INSERT INTO federated_credentials (user_id, provider, subject) VALUES ($1, $2, $3)',
-          [newUser.id, 'google', profile.id]
-        );
+        await FederatedCredential.create({
+          user_id: newUser.id,
+          provider: 'google',
+          subject: profile.id
+        });
 
         return cb(null, { id: newUser.id, name: profile.displayName , email : email  ,role: 'user' });
       } else {
         // existing user
-        const userResult = await db.query(
-          'SELECT * FROM users WHERE id = $1',
-          [result.rows[0].user_id]
-        );
+        const userResult = await User.findByPk(result.user_id);
         
-        if (userResult.rows.length === 0) {
+        if (!userResult) {
           return cb(null, false);
         }
         
-        return cb(null, userResult.rows[0]);
+        return cb(null, userResult);
       }
     } catch (err) {
       console.error('OAuth error:', err)
@@ -100,10 +96,10 @@ exports.ownsQR = async (req, res, next) => {
     if (req.user.role === 'admin') {
       return next();
     }
-    const { rows } = await db.query(
-      'SELECT user_id FROM qr_codes WHERE id = $1',
-      [req.params.id]
-    );
+    const  rows  = await QRCode.findAll({
+    attributes: ['user_id'],
+    where: { id: req.params.id }
+  });
     
     if (!rows.length || rows[0].user_id !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });

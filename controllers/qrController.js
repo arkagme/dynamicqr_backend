@@ -7,6 +7,10 @@ var passport = require('passport');
 var GoogleStrategy = require('passport-google-oidc');
 require('dotenv').config();
 const axios = require('axios')
+const QRCode = require('../models/qrcode');
+const Analytics = require('../models/analytics')
+const UserLogo = require('../models/userlogos')
+const { sequelize } = require('../utils/database')
 
 exports.generateQR = async (req, res, next) => {
   try {
@@ -20,24 +24,16 @@ exports.generateQR = async (req, res, next) => {
       });
     }
     
-  
     const trackingId = crypto.randomBytes(8).toString('hex');
     
-
-    const query = `
-      INSERT INTO qr_codes (id, target_url, with_logo, created_at, user_id)
-      VALUES ($1, $2, $3, $4, $5)
-    `;
+    await QRCode.create({
+      id: trackingId,
+      target_url: url,
+      with_logo: withLogo,
+      created_at: new Date(),
+      user_id: req.user.id
+    });
     
-    await db.query(query, [
-      trackingId, 
-      url, 
-      withLogo,
-      new Date(),
-      req.user.id
-    ]);
-    
-
     const baseUrl = process.env.BASE_URL ||`${req.protocol}://${req.get('host')}`;
     const trackingUrl = `${baseUrl}/r/${trackingId}`;
     
@@ -57,24 +53,29 @@ exports.generateQR = async (req, res, next) => {
 exports.getAnalytics = async (req, res , next) => {
   try {
     const { id } = req.params;
-    
 
-    const query = `SELECT id , target_url , with_logo , created_at FROM qr_codes WHERE id=$1`
-    const {rows: qrInfo} = await db.query(query,[id]);
+    const qrInfo = await QRCode.findByPk(id);
 
-    if (!qrInfo || qrInfo.length === 0) {
+    if (!qrInfo) {
       return res.status(404).json({ error: 'QR code not found' });
     }
     
+    const analyticsData = await sequelize.query(
+      'SELECT * FROM get_qr_analytics(:id)',
+      {
+        replacements: { id },
+        type: sequelize.QueryTypes.SELECT
+      }
+    );
 
+    const dailyScans = await sequelize.query(
+      'SELECT * FROM get_daily_scans(:id)',
+      {
+        replacements: { id },
+        type: sequelize.QueryTypes.SELECT
+      }
+    );
 
-    const analyticsQuery = `SELECT * FROM get_qr_analytics($1)`
-    const {rows: analyticsData} = await db.query(analyticsQuery,[id]);
-     
-
-    const dailyScansQuery = `SELECT * FROM get_daily_scans($1)`;
-    const { rows: dailyScans } = await db.query(dailyScansQuery, [id]);
-    
     const formatToIST = (dateInput) => {
       if (!dateInput) return null;
       
@@ -92,26 +93,26 @@ exports.getAnalytics = async (req, res , next) => {
         hour12: false
       });
     };
-    
+
     const formattedQrInfo = {
-      ...qrInfo[0],
-      created_at: formatToIST(qrInfo[0].created_at)
+      ...qrInfo.toJSON(),
+      created_at: formatToIST(qrInfo.created_at)
     };
-    
+
     const formattedAnalyticsData = {
       ...analyticsData[0],
       get_qr_analytics: {
-        ...analyticsData[0].get_qr_analytics,
-        last_scan: formatToIST(analyticsData[0].get_qr_analytics.last_scan)
+        ...analyticsData[0]?.get_qr_analytics,
+        last_scan: formatToIST(analyticsData[0]?.get_qr_analytics?.last_scan)
       }
     };
-    
+
     const formattedDailyScans = dailyScans.map(day => ({
       ...day,
       date: formatToIST(day.date).split(',')[0], 
       scans: parseInt(day.scans) 
     }));
-    
+
     res.json({
       qr: formattedQrInfo,
       stats: formattedAnalyticsData,
@@ -125,29 +126,33 @@ exports.getAnalytics = async (req, res , next) => {
   }
 };
 
-exports.getHistory = async (req, res ,next) =>{
+
+exports.getHistory = async (req, res, next) => {
   try {
-    const query = `SELECT * FROM qr_codes WHERE user_id = $1 ORDER BY created_at DESC`;
-    const { rows : data } = await db.query(query,[req.user.id]);
+    const data = await QRCode.findAll({
+      where: { user_id: req.user.id },
+      order: [['created_at', 'DESC']]
+    });
     res.json(data);
     logger.info('QR code history fetched successfully');
   } catch (error) {
     next(error);
     res.status(500).json({ error: 'Failed to fetch QR history' });
   }
-}
+};
 
-exports.getAllHistory = async (req, res ,next) =>{
+exports.getAllHistory = async (req, res, next) => {
   try {
-    const query = `SELECT * FROM qr_codes ORDER BY created_at DESC`;
-    const { rows : data } = await db.query(query);
+    const data = await QRCode.findAll({
+      order: [['created_at', 'DESC']]
+    });
     res.json(data);
     logger.info('QR code of all users history fetched successfully');
   } catch (error) {
     next(error);
     res.status(500).json({ error: 'Failed to fetch QR history' });
   }
-}
+};
 
 exports.saveImage = async (req, res , next) => {
        try {
@@ -188,20 +193,20 @@ exports.deleteQR = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const qrCheckQuery = `SELECT id FROM qr_codes WHERE id=$1`;
-    const { rows: qrCheck } = await db.query(qrCheckQuery, [id]);
+    // Check if QR code exists
+    const qrCheck = await QRCode.findOne({ where: { id } });
 
-    if (!qrCheck.length) {
+    if (!qrCheck) {
       return res.status(404).json({ error: 'QR code not found' });
     }
 
+    // Delete related analytics
+    await Analytics.destroy({ where: { qr_code_id: id } });
 
-    await db.query(`DELETE FROM analytics WHERE qr_code_id = $1`, [id]);
+    // Delete QR code record
+    await QRCode.destroy({ where: { id } });
 
-
-    await db.query(`DELETE FROM qr_codes WHERE id = $1`, [id]);
-
-
+    // Delete QR image file if exists
     const imagePath = path.join(process.cwd(), 'assets', `${id}.png`);
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
@@ -215,6 +220,7 @@ exports.deleteQR = async (req, res, next) => {
     res.status(500).json({ error: 'Failed to delete QR code' });
   }
 };
+
 
 exports.authenticateRedirect = (req, res, next) => {
   passport.authenticate('google', { 
@@ -235,29 +241,27 @@ exports.getMe = (req,res,next) => {
 
 exports.getUserLogos = async (req, res, next) => {
   try {
-    const infoUrl = process.env.ME_URI
+    const infoUrl = process.env.ME_URI;
     const userResponse = await axios.get(infoUrl, {
       headers: {
         cookie: req.headers.cookie
       }
     });
-    
+
     const user = userResponse.data.user;
-    
-    const query = `
-      SELECT share_id,direct_url
-      FROM user_logos 
-      WHERE user_id = $1 
-      ORDER BY uploaded_at DESC
-    `;
-    
-    const { rows } = await db.query(query, [user.id]);
-    
-    const formattedLogos = rows.map((logo, index) => ({
+
+    // Sequelize query replacing raw SQL
+    const rows = await UserLogo.findAll({
+      where: { user_id: user.id },
+      order: [['uploaded_at', 'DESC']],
+      attributes: ['share_id', 'direct_url']
+    });
+
+    const formattedLogos = rows.map((logo) => ({
       url: logo.direct_url,
-      share_id : logo.share_id
+      share_id: logo.share_id
     }));
-    
+
     res.json({
       success: true,
       logos: formattedLogos
@@ -270,31 +274,31 @@ exports.getUserLogos = async (req, res, next) => {
   }
 };
 
+
 exports.deleteUserLogo = async (req, res, next) => {
   try {
     const { logoId } = req.params;
-    const infoUrl = process.env.ME_URI
+    const infoUrl = process.env.ME_URI;
     const userResponse = await axios.get(infoUrl, {
       headers: {
         cookie: req.headers.cookie
       }
     });
-    
+
     const user = userResponse.data.user;
-    const checkQuery = `
-      SELECT * FROM user_logos 
-      WHERE share_id = $1 AND user_id = $2
-    `;
-    
-    const { rows } = await db.query(checkQuery, [logoId, user.id]);
-    
+
+    // Check if logo exists for the user
+    const rows = await UserLogo.findAll({
+      where: { share_id: logoId, user_id: user.id }
+    });
+
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Logo not found or unauthorized' });
     }
 
-    const deleteQuery = `DELETE FROM user_logos WHERE share_id = $1`;
-    await db.query(deleteQuery, [logoId]);
-    
+    // Delete logo by share_id
+    await UserLogo.destroy({ where: { share_id: logoId } });
+
     res.json({
       success: true,
       message: 'Logo deleted successfully'

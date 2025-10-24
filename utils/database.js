@@ -1,23 +1,28 @@
-const { Pool } = require('pg');
+const { Sequelize } = require('sequelize');
 const config = require('../config');
+const logger = require('../utils/logger');
 
-const pool = new Pool({
-  host: config.database.host,
-  port: config.database.port,
+const sequelize = new Sequelize({
+  username: config.database.username,
+  password: config.database.password,
   database: config.database.name,
-  user: config.database.user,
-  password: config.database.password
+  host: config.database.host,
+  port : config.database.port,
+  dialect: config.database.dialect,
 });
 
-//Testing database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.log('Database connection error:', err.stack);
-  } else {
-    console.log('Database connected successfully');
+const syncDatabase = async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+    await sequelize.sync();
+    console.log('Database synchronized successfully.');
+  } catch (error) {
+    console.log('Unable to connect to the database:', error);
   }
-});
+};
 
 module.exports = {
-  query: (text, params) => pool.query(text, params)
+  sequelize,
+  syncDatabase,
 };
