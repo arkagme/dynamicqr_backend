@@ -9,6 +9,12 @@ const sequelize = new Sequelize({
   host: config.database.host,
   port : config.database.port,
   dialect: config.database.dialect,
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,  
+    },
+  },
 });
 
 const syncDatabase = async () => {
